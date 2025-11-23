@@ -1,4 +1,4 @@
-# TR-OOP (SIA.SAT Feature Extension)
+# TR-OOP 
 
 Proyek ini merupakan tugas akhir OOP berbasis Java dengan konsep MVC dan GUI Java Swing.
 Fitur yang ditambahkan pada sistem akademik:
@@ -11,4 +11,3 @@ Fitur yang ditambahkan pada sistem akademik:
 - Kalender Akademik
 - Multi Role (Mahasiswa / Dosen / Super Admin)
 
-...
