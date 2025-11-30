@@ -1,13 +1,20 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package model;
 
-/**
- *
- * @author Angkasa
- */
 public class KelasModel {
-    
+
+    private String namaKelas;
+    private int jumlahMahasiswa;
+
+    public KelasModel(String namaKelas, int jumlahMahasiswa) {
+        this.namaKelas = namaKelas;
+        this.jumlahMahasiswa = jumlahMahasiswa;
+    }
+
+    public String getNamaKelas() {
+        return namaKelas;
+    }
+
+    public int getJumlahMahasiswa() {
+        return jumlahMahasiswa;
+    }
 }

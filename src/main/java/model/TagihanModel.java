@@ -1,13 +1,38 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package model;
 
-/**
- *
- * @author Angkasa
- */
 public class TagihanModel {
-    
+
+    private String nama;
+    private double jumlah;
+    private boolean lunas;
+
+    public TagihanModel(String nama, double jumlah, boolean lunas) {
+        this.nama = nama;
+        this.jumlah = jumlah;
+        this.lunas = lunas;
+    }
+
+    public String getNama() {
+        return nama;
+    }
+
+    public double getJumlah() {
+        return jumlah;
+    }
+
+    public boolean isLunas() {
+        return lunas;
+    }
+
+    public void setNama(String nama) {
+        this.nama = nama;
+    }
+
+    public void setJumlah(double jumlah) {
+        this.jumlah = jumlah;
+    }
+
+    public void setLunas(boolean lunas) {
+        this.lunas = lunas;
+    }
 }

@@ -1,13 +1,26 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package model;
 
-/**
- *
- * @author Angkasa
- */
 public class KSTModel {
-    
+
+    private String kodeMatkul;
+    private String namaMatkul;
+    private int sks;
+
+    public KSTModel(String kodeMatkul, String namaMatkul, int sks) {
+        this.kodeMatkul = kodeMatkul;
+        this.namaMatkul = namaMatkul;
+        this.sks = sks;
+    }
+
+    public String getKodeMatkul() {
+        return kodeMatkul;
+    }
+
+    public String getNamaMatkul() {
+        return namaMatkul;
+    }
+
+    public int getSks() {
+        return sks;
+    }
 }

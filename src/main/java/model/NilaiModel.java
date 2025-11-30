@@ -1,13 +1,20 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package model;
 
-/**
- *
- * @author Angkasa
- */
 public class NilaiModel {
-    
+
+    private String mataKuliah;
+    private double nilai;
+
+    public NilaiModel(String mataKuliah, double nilai) {
+        this.mataKuliah = mataKuliah;
+        this.nilai = nilai;
+    }
+
+    public String getMataKuliah() {
+        return mataKuliah;
+    }
+
+    public double getNilai() {
+        return nilai;
+    }
 }
