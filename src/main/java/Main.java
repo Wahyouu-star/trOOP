@@ -1,12 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+import controller.LoginController;
+import view.LoginView;
+import javax.swing.SwingUtilities;
 
-/**
- *
- * @author Angkasa
- */
 public class Main {
-    
+    public static void main(String[] args) {
+        // Disarankan menjalankan operasi Swing di Event Dispatch Thread (EDT)
+        SwingUtilities.invokeLater(() -> {
+            LoginView loginView = new LoginView();
+            new LoginController(loginView); // Controller menginisialisasi listener
+        });
+    }
 }

@@ -4,24 +4,24 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
-public class KalenderView extends JFrame {
+public class DosenView extends JFrame {
 
-    public KalenderView() {
-        setTitle("Kalender Akademik");
+    public DosenView() {
+        setTitle("Dashboard Dosen");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(null);
         setResizable(true);
         getContentPane().setBackground(new Color(245, 246, 247));
 
-        initComponents("Kalender Akademik");
+        initComponents("Dashboard Dosen", new Color(0, 35, 120)); // Biru
 
         setSize(1300, 650);
         setLocationRelativeTo(null);
         setVisible(true);
     }
     
-    private void initComponents(String viewTitle) {
-        
+    private void initComponents(String viewTitle, Color titleColor) {
+        // Logika layout sama persis dengan HomeView
         int mainPanelRadius = 40;
         Color mainPanelColor = new Color(248, 249, 250);
         
@@ -41,15 +41,16 @@ public class KalenderView extends JFrame {
         mainPanel.setBounds(230, 80, 1000, 550); 
         add(mainPanel);
 
+        // --- Konten Spesifik View ---
         JLabel title = new JLabel(viewTitle);
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(0, 35, 120));
+        title.setForeground(titleColor);
         title.setBounds(40, 20, 500, 30);
         mainPanel.add(title);
         
-        JLabel info = new JLabel("Tampilan semua jadwal penting akademik.");
-        info.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        info.setBounds(40, 70, 500, 30);
-        mainPanel.add(info);
+        JLabel welcome = new JLabel("Selamat Datang di Dashboard Dosen!");
+        welcome.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        welcome.setBounds(40, 70, 500, 30);
+        mainPanel.add(welcome);
     }
 }
