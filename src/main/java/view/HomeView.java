@@ -28,20 +28,17 @@ public class HomeView extends JFrame {
         setResizable(true);
         getContentPane().setBackground(new Color(245, 246, 247));
 
-        initComponents(); // Hanya membuat kerangka (Frame dan Panel kosong)
+        initComponents();
 
         setSize(1300, 650);
         setLocationRelativeTo(null);
         setVisible(true);
     }
     
-    // ====================================================
-    // FIX 1: MENAMBAHKAN initializeContent()
-    // ====================================================
+    // Dipanggil dari HomeController untuk memuat konten setelah Frame siap
     public void initializeContent() {
-        // Pastikan CardLayout sudah tersedia
         cardLayout = (CardLayout) dynamicContentPanel.getLayout();
-        addInitialContent(); // Panggil logika penambahan konten sebenarnya
+        addInitialContent(); 
     }
 
     private void initComponents() {
@@ -82,13 +79,10 @@ public class HomeView extends JFrame {
         mainContainerPanel.add(sidebarWrapper);
 
         // =================== DYNAMIC CONTENT AREA (RIGHT) ===================
-        // Inisialisasi CardLayout di sini
         dynamicContentPanel = new JPanel(new CardLayout()); 
         dynamicContentPanel.setBounds(260, 60, 720, 470); 
         dynamicContentPanel.setBackground(Color.WHITE);
         mainContainerPanel.add(dynamicContentPanel);
-        
-        // Hapus pemanggilan addInitialContent() dari sini! Akan dipanggil oleh Controller.
     }
     
     private JPanel createHeaderPanel() {
@@ -126,9 +120,8 @@ public class HomeView extends JFrame {
         String[] menuItems = {"HOME", "REGISTRASI ULANG", "REGISTRASI MATAKULIAH", "JADWAL KULIAH", 
                               "TRANSKRIP NILAI", "TAGIHAN", "KALENDER", "LOGOUT"};
         
-        // FIX: Hapus Label "DI SISTEM INFORMASI AKADEMIK" yang redundant
         JLabel emptyHeader = new JLabel(" ");
-        emptyHeader.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 10)); // Padding untuk menjaga spasi atas
+        emptyHeader.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 10)); 
         panel.add(emptyHeader);
         
         for (String item : menuItems) {
@@ -139,7 +132,10 @@ public class HomeView extends JFrame {
             button.setHorizontalAlignment(SwingConstants.LEFT);
             button.setBackground(SIDEBAR_BG_COLOR);
             button.setForeground(SIDEBAR_COLOR);
-            button.setFont(new Font("Segoe UI", Font.BOLD, 15)); 
+            
+            // Font disesuaikan agar teks panjang muat
+            button.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
+            
             button.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 5)); 
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setFocusPainted(false);
@@ -152,20 +148,41 @@ public class HomeView extends JFrame {
         return panel;
     }
     
+    // ==========================================================
+    // METODE PEMUATAN KONTEN UTAMA (MODULAR)
+    // ==========================================================
     private void addInitialContent() {
         JPanel homeContent = createHomeWithRegistrationFormPanel();
         dynamicContentPanel.add(homeContent, "HOME");
         
-        JPanel registrasiUlangContent = createPlaceholderPanel("REGISTRASI ULANG (Info Ringkasan)");
+        // --- 2. REGISTRASI ULANG (Panel Error Statis) ---
+        JPanel registrasiUlangContent = createRegistrasiUlangErrorPanel();
         dynamicContentPanel.add(registrasiUlangContent, "REGISTRASI ULANG");
         
-        dynamicContentPanel.add(createPlaceholderPanel("REGISTRASI MATAKULIAH"), "REGISTRASI MATAKULIAH");
-        dynamicContentPanel.add(createPlaceholderPanel("JADWAL KULIAH"), "JADWAL KULIAH");
-        dynamicContentPanel.add(createPlaceholderPanel("TRANSKRIP NILAI"), "TRANSKRIP NILAI");
-        dynamicContentPanel.add(createPlaceholderPanel("TAGIHAN"), "TAGIHAN");
-        dynamicContentPanel.add(createPlaceholderPanel("KALENDER"), "KALENDER");
+        // --- 3. JADWAL KULIAH (Memuat Modul JadwalView) ---
+        dynamicContentPanel.add(new JadwalView(), "JADWAL KULIAH"); 
+        
+        // --- Memuat View Modul Lainnya (Harus extends JPanel) ---
+        dynamicContentPanel.add(new KSTView(), "REGISTRASI MATAKULIAH"); 
+        dynamicContentPanel.add(new NilaiView(), "TRANSKRIP NILAI"); 
+        dynamicContentPanel.add(new TagihanView(), "TAGIHAN");
+        dynamicContentPanel.add(new KalenderView(), "KALENDER");
         
         cardLayout.show(dynamicContentPanel, "HOME"); 
+    }
+    
+    // ... Metode-metode helper
+    
+    private JPanel createRegistrasiUlangErrorPanel() {
+        JPanel panel = new JPanel(new GridBagLayout()); 
+        panel.setBackground(Color.WHITE);
+        
+        JLabel errorMessage = new JLabel("Err2: Masa registrasi ulang sudah habis, hubungi bagian Administrasi Akademik UKSW");
+        errorMessage.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
+        errorMessage.setForeground(Color.RED); 
+        
+        panel.add(errorMessage); 
+        return panel;
     }
     
     private JPanel createHomeWithRegistrationFormPanel() {
@@ -174,36 +191,35 @@ public class HomeView extends JFrame {
         
         // ================= HEADER WELCOME ==================
         JLabel welcomeTitle = new JLabel("SELAMAT DATANG");
-        welcomeTitle.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        welcomeTitle.setFont(new Font("Segoe UI", Font.BOLD, 28)); 
         welcomeTitle.setForeground(SIDEBAR_COLOR);
-        welcomeTitle.setBounds(50, 20, 400, 40);
+        welcomeTitle.setBounds(50, 20, 400, 35); 
         panel.add(welcomeTitle);
         
         JLabel sysTitle = new JLabel("DI SISTEM INFORMASI AKADEMIK SATYA WACANA");
-        sysTitle.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        sysTitle.setBounds(50, 60, 600, 25);
+        sysTitle.setFont(new Font("Segoe UI", Font.PLAIN, 16)); 
+        sysTitle.setBounds(50, 55, 600, 25); 
         panel.add(sysTitle);
         
-        // ================= REGISTRASI ULANG FORM DETAIL ==================
+        // ================= DESKRIPSI ==================
         JTextArea deskripsi = new JTextArea("UNTUK KEPERLUAN ADMINISTRASI ANDA, SILAHKAN UPDATE ISIAN DI BAWAH INI. DATA INI DIPERGUNAKAN UNTUK SYARAT PELAPORAN KE DIREKTORAT JENDERAL PENDIDIKAN TINGGI (DIKTI), KARENA PENTINGNYA DATA KEPENDUDUKAN MAHASISWA DALAM PELAPORAN PD DIKTI DAN VERIFIKASI KEABSAHAN IJAZAH, MAKA WAJIB MELAKUKAN PENGISIAN NIK DAN NOMOR KK SECARA BENAR");
         deskripsi.setWrapStyleWord(true);
         deskripsi.setLineWrap(true);
         deskripsi.setEditable(false);
         deskripsi.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        deskripsi.setBounds(50, 100, 650, 70); 
+        deskripsi.setBounds(50, 85, 650, 65); 
         deskripsi.setBorder(null);
         panel.add(deskripsi);
         
         // Form Fields
         String[] fields = {"Tempat, Tanggal Lahir", "No. Kartu Keluarga", "NIK (Nomor Induk Kependudukan)", 
                            "No. Handphone", "Email", "Nomor Rekening", "Bank", 
-                           "Atas Nama Rekening", "Hubungan Dengan Pemilik Rekening"};
+                           "Atas Nama Rekening"}; 
         
-        int yPos = 180; 
+        int yPos = 160; 
         int fieldHeight = 25;
         for (String field : fields) {
             JLabel label = new JLabel(field + " :");
-            // FIX: Alignment Kanan pada Label untuk kerapian
             label.setHorizontalAlignment(SwingConstants.RIGHT); 
             label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             label.setBounds(50, yPos, 190, fieldHeight); 
@@ -213,29 +229,21 @@ public class HomeView extends JFrame {
             textField.setBounds(250, yPos, 400, fieldHeight); 
             panel.add(textField);
             
-            yPos += 30;
+            yPos += 30; 
         }
         
+        // Tombol Lanjut
         JButton lanjutButton = new JButton("Lanjut");
         lanjutButton.setBackground(SIDEBAR_COLOR);
         lanjutButton.setForeground(Color.WHITE);
         lanjutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        // FIX: Posisi Tombol
-        lanjutButton.setBounds(650 - 150, yPos - 5, 150, 35); 
+        lanjutButton.setBounds(650 - 150, yPos + 10, 150, 35); 
         panel.add(lanjutButton);
-
+        
         return panel;
     }
     
-    private JPanel createPlaceholderPanel(String name) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JLabel label = new JLabel("INI HALAMAN " + name, SwingConstants.CENTER);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        panel.add(label, BorderLayout.CENTER);
-        return panel;
-    }
-    
+    // Metode untuk ganti kartu (dipanggil oleh Controller)
     public void switchCard(String cardName) {
         cardLayout.show(dynamicContentPanel, cardName);
         highlightButton(cardName);

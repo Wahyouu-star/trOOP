@@ -5,7 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Map;
 import javax.swing.JButton;
-import javax.swing.SwingUtilities; // Import baru
+import javax.swing.SwingUtilities;
 
 public class HomeController {
     
@@ -14,14 +14,11 @@ public class HomeController {
     public HomeController(HomeView view) {
         this.view = view;
         
-        // FIX: Tunda pemanggilan initController() agar View punya waktu untuk dibuat
+        // FIX KRITIS: Memanggil initController setelah Frame siap
         SwingUtilities.invokeLater(this::initController); 
     }
     
     private void initController() {
-        System.out.println("HomeController Mahasiswa aktif.");
-        
-        // Panggil metode View untuk memuat konten CardLayout
         view.initializeContent(); 
 
         // Pasang listener ke semua tombol menu
@@ -33,7 +30,6 @@ public class HomeController {
         }
     }
     
-    // Inner class untuk menangani klik Sidebar tetap sama
     class SidebarMenuListener implements ActionListener {
         private final String menuName;
         
@@ -45,9 +41,9 @@ public class HomeController {
         public void actionPerformed(ActionEvent e) {
             if (menuName.equals("LOGOUT")) {
                 view.dispose();
-                // TODO: Buka kembali LoginView
+                // TODO: Logika kembali ke LoginView
             } else {
-                view.switchCard(menuName);
+                view.switchCard(menuName); // Navigasi ke View yang sesuai
             }
         }
     }

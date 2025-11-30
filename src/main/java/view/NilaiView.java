@@ -1,55 +1,97 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 
-public class NilaiView extends JFrame {
+public class NilaiView extends JPanel { 
+
+    private final Color HEADER_COLOR = new Color(0, 35, 120); 
 
     public NilaiView() {
-        setTitle("Transkrip Nilai");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setLayout(null);
-        setResizable(true);
-        getContentPane().setBackground(new Color(245, 246, 247));
-
-        initComponents("Transkrip Nilai");
-
-        setSize(1300, 650);
-        setLocationRelativeTo(null);
-        setVisible(true);
+        setLayout(new BorderLayout());
+        setBackground(Color.WHITE);
+        initComponents();
     }
     
-    private void initComponents(String viewTitle) {
+    private void initComponents() {
         
-        int mainPanelRadius = 40;
-        Color mainPanelColor = new Color(248, 249, 250);
-        
-        JPanel mainPanel = new JPanel() {
+        // --- DATA TABEL ---
+        String[] columnNames = {"No", "Kode", "Matakuliah", "SKS", "Nilai", "AK", "Semester", "Tahun Ajaran"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(mainPanelColor);
-                g2.fill(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, mainPanelRadius, mainPanelRadius));
-                g2.dispose();
+            public boolean isCellEditable(int row, int column) {
+                return false; // Transkrip tidak bisa diedit
             }
-            { setOpaque(false); } 
         };
         
-        mainPanel.setLayout(null);
-        mainPanel.setBounds(230, 80, 1000, 550); 
-        add(mainPanel);
-
-        JLabel title = new JLabel(viewTitle);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(0, 35, 120));
-        title.setBounds(40, 20, 500, 30);
-        mainPanel.add(title);
+        // Data Placeholder (Berdasarkan desain figma)
+        Object[][] rowData = {
+            {"1", "TCS103", "MATEMATIKA DASAR", "3", "B", "9", "A", "2020-2021/1"},
+            {"2", "TCS13F", "DASAR-DASAR PEMROGRAMAN", "3", "C", "6", "A", "2020-2021/1"},
+            {"3", "TCS20A", "SISTEM BASIS DATA", "3", "A", "12", "B", "2021-2022/1"},
+            {"4", "TCS22A", "PENGANTAR TEKNOLOGI INFORMASI", "3", "AB", "10.5", "B", "2021-2022/1"},
+            {"5", "TCS1C1", "ALJABAR LINIER", "3", "A", "12", "C", "2022-2023/1"},
+            {"6", "HUR41C", "PENDIDIKAN AGAMA KRISTEN", "2", "AB", "7", "C", "2022-2023/1"},
+            {"7", "MUM1M", "PANCASILA", "2", "B", "6", "A", "2023-2024/1"},
+            {"8", "MUM3F", "BAHASA INDONESIA", "2", "B", "6", "A", "2023-2024/1"},
+            {"9", "TCS21C", "ALJABAR DAN MATRIKS", "3", "AB", "7", "B", "2024-2025/2"},
+            {"10", "TCS22B", "STATISTIKA DAN PROBABILITAS", "3", "A", "8", "B", "2024-2025/2"},
+            {"11", "TCS2FC", "TEORI BAHASA DAN OTOMATA", "3", "BC", "7.5", "A", "2024-2025/2"},
+            {"12", "TCS34A", "JARINGAN KOMPUTER", "3", "C", "0", "B", "2024-2025/2"},
+            {"13", "TCS35B", "INTEGRASI MAJALAH DAN KOMPUTER", "3", "A", "12", "B", "2024-2025/2"},
+            {"14", "TCS3AB", "ALGORITMA DAN STRUKTUR DATA", "3", "A", "12", "B", "2024-2025/2"}
+        };
         
-        JLabel info = new JLabel("Tampilan riwayat mata kuliah dan Indeks Prestasi (IP).");
-        info.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        info.setBounds(40, 70, 500, 30);
-        mainPanel.add(info);
+        for (Object[] row : rowData) {
+            model.addRow(row);
+        }
+        
+        // --- SUMMARY ROW ---
+        Object[] summaryRow = {"", "Total", "", "37", "", "106", "", ""};
+        model.addRow(summaryRow);
+        
+        Object[] ipkRow = {"", "IPK", "", "3.41", "", "", "", ""};
+        model.addRow(ipkRow);
+
+        JTable table = new JTable(model);
+        
+        // --- TABLE STYLING ---
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        table.setRowHeight(25);
+        
+        // Styling Header
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.getTableHeader().setBackground(new Color(230, 230, 230));
+
+        // Pengaturan lebar kolom
+        table.getColumnModel().getColumn(0).setPreferredWidth(30);  // No
+        table.getColumnModel().getColumn(1).setPreferredWidth(60);  // Kode
+        table.getColumnModel().getColumn(2).setPreferredWidth(250); // Matakuliah
+        table.getColumnModel().getColumn(3).setPreferredWidth(50);  // SKS
+        table.getColumnModel().getColumn(4).setPreferredWidth(50);  // Nilai
+        table.getColumnModel().getColumn(5).setPreferredWidth(50);  // AK
+        table.getColumnModel().getColumn(6).setPreferredWidth(80);  // Semester
+        table.getColumnModel().getColumn(7).setPreferredWidth(100); // Tahun Ajaran
+        
+        // Rata Tengah (SKS, Nilai, AK)
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer); // SKS
+        table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer); // Nilai
+        table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer); // AK
+        
+        // Judul
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        header.setBackground(Color.WHITE);
+        JLabel title = new JLabel("TRANSKRIP NILAI AKADEMIK");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(HEADER_COLOR);
+        title.setBorder(BorderFactory.createEmptyBorder(15, 10, 10, 10));
+        header.add(title);
+        
+        this.add(header, BorderLayout.NORTH);
+        this.add(new JScrollPane(table), BorderLayout.CENTER);
     }
 }
