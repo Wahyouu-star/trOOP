@@ -5,6 +5,8 @@ import view.DosenView;
 import view.HomeView;
 import view.LoginView;
 import service.AuthService;
+import model.PenggunaModel; // Pastikan import ini ada
+import model.SessionManager; // Pastikan import ini ada
 import javax.swing.*;
 import java.util.Map;
 import javax.swing.JButton;
@@ -12,6 +14,7 @@ import javax.swing.JButton;
 public class LoginController {
 
     private final LoginView view;
+    // Gunakan AuthService yang sudah diubah untuk query database
     private final AuthService authService = new AuthService();
 
     public LoginController(LoginView v) {
@@ -36,7 +39,13 @@ public class LoginController {
             return;
         }
 
-        if (authService.authenticate(role, username, password)) {
+        // Panggil metode authenticate yang baru, yang mengembalikan PenggunaModel
+        PenggunaModel user = authService.authenticate(role, username, password);
+
+        if (user != null) {
+            // Set Session sebelum berpindah View (CRITICAL)
+            SessionManager.getInstance().setCurrentUser(user);
+
             switch (role) {
                 case "Mahasiswa" -> {
                     new HomeController(new HomeView());

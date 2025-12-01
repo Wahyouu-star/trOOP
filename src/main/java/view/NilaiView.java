@@ -1,9 +1,14 @@
+// TR-OOP/src/main/java/view/NilaiView.java
+
 package view;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList; 
+import model.SessionManager; 
+import service.NilaiService; // Import service utama
 
 public class NilaiView extends JPanel { 
 
@@ -19,6 +24,7 @@ public class NilaiView extends JPanel {
         
         // --- DATA TABEL ---
         String[] columnNames = {"No", "Kode", "Matakuliah", "SKS", "Nilai", "AK", "Semester", "Tahun Ajaran"};
+        
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -26,33 +32,26 @@ public class NilaiView extends JPanel {
             }
         };
         
-        // Data Placeholder (Berdasarkan desain figma)
-        Object[][] rowData = {
-            {"1", "TCS103", "MATEMATIKA DASAR", "3", "B", "9", "A", "2020-2021/1"},
-            {"2", "TCS13F", "DASAR-DASAR PEMROGRAMAN", "3", "C", "6", "A", "2020-2021/1"},
-            {"3", "TCS20A", "SISTEM BASIS DATA", "3", "A", "12", "B", "2021-2022/1"},
-            {"4", "TCS22A", "PENGANTAR TEKNOLOGI INFORMASI", "3", "AB", "10.5", "B", "2021-2022/1"},
-            {"5", "TCS1C1", "ALJABAR LINIER", "3", "A", "12", "C", "2022-2023/1"},
-            {"6", "HUR41C", "PENDIDIKAN AGAMA KRISTEN", "2", "AB", "7", "C", "2022-2023/1"},
-            {"7", "MUM1M", "PANCASILA", "2", "B", "6", "A", "2023-2024/1"},
-            {"8", "MUM3F", "BAHASA INDONESIA", "2", "B", "6", "A", "2023-2024/1"},
-            {"9", "TCS21C", "ALJABAR DAN MATRIKS", "3", "AB", "7", "B", "2024-2025/2"},
-            {"10", "TCS22B", "STATISTIKA DAN PROBABILITAS", "3", "A", "8", "B", "2024-2025/2"},
-            {"11", "TCS2FC", "TEORI BAHASA DAN OTOMATA", "3", "BC", "7.5", "A", "2024-2025/2"},
-            {"12", "TCS34A", "JARINGAN KOMPUTER", "3", "C", "0", "B", "2024-2025/2"},
-            {"13", "TCS35B", "INTEGRASI MAJALAH DAN KOMPUTER", "3", "A", "12", "B", "2024-2025/2"},
-            {"14", "TCS3AB", "ALGORITMA DAN STRUKTUR DATA", "3", "A", "12", "B", "2024-2025/2"}
-        };
+        // --- MENGAMBIL DATA DARI SERVICE (siap DB) ---
+        NilaiService nilaiService = new NilaiService();
+        // Cek jika ada user login, jika tidak, gunakan dummy ID
+        String nim = SessionManager.getInstance().isLoggedIn() ? 
+                     SessionManager.getInstance().getCurrentUser().getId() : "DUMMY";
+                     
+        // ERROR di sini: NilaiService.NilaiDetail di baris 35
+        ArrayList<NilaiService.NilaiDetail> transkrip = nilaiService.getTranskrip(nim);
         
-        for (Object[] row : rowData) {
-            model.addRow(row);
+        // Mengisi model tabel dengan data dari Service
+        for (NilaiService.NilaiDetail rowDetail : transkrip) {
+            model.addRow(rowDetail.toRowData());
         }
         
         // --- SUMMARY ROW ---
-        Object[] summaryRow = {"", "Total", "", "37", "", "106", "", ""};
+        // Menggunakan method dari service untuk summary
+        Object[] summaryRow = nilaiService.getSummaryRow(transkrip);
         model.addRow(summaryRow);
         
-        Object[] ipkRow = {"", "IPK", "", "3.41", "", "", "", ""};
+        Object[] ipkRow = nilaiService.getIPKRow(transkrip);
         model.addRow(ipkRow);
 
         JTable table = new JTable(model);

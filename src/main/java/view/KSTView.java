@@ -6,6 +6,10 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList; 
+import model.KSTModel; 
+import model.SessionManager; // Tambahkan untuk mendapatkan NIM
+import service.KSTService; // Tambahkan untuk memanggil logika DB
 
 public class KSTView extends JPanel {
 
@@ -19,18 +23,25 @@ public class KSTView extends JPanel {
 
     private void initComponents() {
 
+        // --- AMBIL DATA DARI SERVICE (DB) ---
+        KSTService kstService = new KSTService();
+        ArrayList<KSTModel> courses = kstService.getAvailableCourses();
+        
         String[] columnNames = {"KODE MATA KULIAH", "NAMA MATA KULIAH", "SKS", "AKSI"};
-        Object[][] data = {
-                {"TCS201", "ALGORITMA & STRUKTUR DATA", "3", "Registrasi"},
-                {"TCS202", "SISTEM BASIS DATA", "3", "Registrasi"},
-                {"TCS203", "JARINGAN KOMPUTER", "3", "Registrasi"},
-                {"TCS204", "P. BERORIENTASI OBJEK II", "3", "Registrasi"},
-                {"TCS205", "ETIKA PROFESI", "2", "Registrasi"},
-                {"TCS206", "KECERDASAN BUATAN", "3", "Registrasi"},
-                {"TCS207", "DATA MINING", "3", "Registrasi"}
-        };
+        
+        // Buat array 2D dari hasil Service
+        Object[][] data = new Object[courses.size()][4];
+        for (int i = 0; i < courses.size(); i++) {
+            KSTModel course = courses.get(i);
+            data[i][0] = course.getKodeMatkul();
+            data[i][1] = course.getNamaMatkul();
+            data[i][2] = String.valueOf(course.getSks()); // SKS diubah ke String
+            data[i][3] = "Registrasi";
+        }
+        // --- SELESAI AMBIL DATA ---
 
-        JTable table = new JTable(data, columnNames);
+
+        JTable table = new JTable(data, columnNames); // Gunakan data dinamis
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         table.setRowHeight(25);
 
@@ -80,7 +91,7 @@ public class KSTView extends JPanel {
         }
     }
 
-    // FIXED BUTTON EDITOR
+    // FIXED BUTTON EDITOR DENGAN LOGIKA GENERATE TAGIHAN
     class ButtonEditor extends DefaultCellEditor implements ActionListener {
 
         protected JButton button;
@@ -114,13 +125,43 @@ public class KSTView extends JPanel {
         @Override
         public Object getCellEditorValue() {
             if (isPushed) {
+                // --- 1. Ambil Data Penting ---
+                if (!SessionManager.getInstance().isLoggedIn()) {
+                     JOptionPane.showMessageDialog(null, "Sesi berakhir. Harap login kembali.", "Error Sesi", JOptionPane.ERROR_MESSAGE);
+                     return label;
+                }
+                
+                String nim = SessionManager.getInstance().getCurrentUser().getId(); // Ambil NIM dari sesi
                 String kodeMatkul = (String) table.getModel().getValueAt(table.getEditingRow(), 0);
                 String namaMatkul = (String) table.getModel().getValueAt(table.getEditingRow(), 1);
-
-                JOptionPane.showMessageDialog(null,
-                        "Matakuliah " + namaMatkul + " (" + kodeMatkul + ") telah ditambahkan ke KRS Anda.",
-                        "Konfirmasi Registrasi",
+                
+                String sksString = (String) table.getModel().getValueAt(table.getEditingRow(), 2);
+                int sks = 0;
+                try {
+                    sks = Integer.parseInt(sksString); 
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(null, "SKS tidak valid.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return label;
+                }
+                
+                KSTService kstService = new KSTService(); 
+                long totalTagihan = 250000L * sks;
+                
+                // --- 2. Panggil Service untuk Registrasi dan Generate Tagihan ---
+                if (kstService.registerCourseAndGenerateBill(nim, kodeMatkul, sks)) {
+                    // Sukses
+                    JOptionPane.showMessageDialog(null,
+                        "Matakuliah " + namaMatkul + " (" + kodeMatkul + ") berhasil ditambahkan ke KRS Anda.\n" +
+                        "Tagihan SKS otomatis sebesar Rp " + String.format("%,d", totalTagihan).replace(",", ".") + " telah ditambahkan ke menu Tagihan.",
+                        "Registrasi Berhasil",
                         JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    // Gagal
+                    JOptionPane.showMessageDialog(null,
+                        "Gagal melakukan registrasi. Matakuliah ini sudah terdaftar atau terjadi masalah koneksi database/server.",
+                        "Registrasi Gagal",
+                        JOptionPane.ERROR_MESSAGE);
+                }
             }
             isPushed = false;
             return label;

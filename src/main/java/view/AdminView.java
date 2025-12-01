@@ -7,10 +7,19 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
+import model.SessionManager;         
+import view.LoginView;               
+import controller.LoginController;   
+import service.NotifikasiService;    
+import model.KalenderModel;          
+import service.KalenderService;      
+import model.PenggunaModel;
 
 public class AdminView extends JFrame {
 
@@ -24,6 +33,7 @@ public class AdminView extends JFrame {
     private final Color SIDEBAR_BG_COLOR = new Color(230, 235, 240);
     private final Color MAIN_BG_COLOR = new Color(248, 249, 250);
     private final String USER_INFO = "SUPER ADMIN";
+    private final Color AGENDA_COLOR = new Color(204, 229, 255); // Warna Agenda
 
     public AdminView() {
         setTitle("Dashboard Super Admin");
@@ -99,11 +109,31 @@ public class AdminView extends JFrame {
         infoLabel.setBounds(20, 15, 800, 30);
         panel.add(infoLabel);
 
-        JLabel notifIcon = new JLabel("🔔");
+        // --- NOTIFIKASI ICON DINAMIS ---
+        NotifikasiService notifService = new NotifikasiService();
+        String userRole = "Super Admin";
+        
+        int unreadCount = notifService.getUnreadCount(userRole, null); 
+        
+        JLabel notifIcon = new JLabel("<html><span style='color:white;'>" + 
+                                       (unreadCount > 0 ? "🔔 (" + unreadCount + ")" : "🔔") + 
+                                       "</span></html>"); 
+
         notifIcon.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        notifIcon.setForeground(Color.WHITE);
-        notifIcon.setBounds(1000, 15, 30, 30);
+        notifIcon.setBounds(1000, 15, 60, 30); 
+        notifIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
         panel.add(notifIcon);
+        
+        notifIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent evt) {
+                // Asumsi NotifikasiDetailView.java sudah ada
+                List<model.NotifikasiModel> notifications = notifService.getNotifications(userRole, null);
+                NotifikasiDetailView detailView = new NotifikasiDetailView(AdminView.this, notifications);
+                detailView.showDialog();
+            }
+        });
+        // --- END NOTIFIKASI ICON DINAMIS ---
 
         return panel;
     }
@@ -120,7 +150,8 @@ public class AdminView extends JFrame {
                 "ATUR TAGIHAN",
                 "ATUR TAGIHAN MATKUL",
                 "ATUR NOTIFIKASI",
-                "ATUR KALENDER"
+                "ATUR KALENDER",
+                "LOGOUT"
         };
 
         JLabel emptyHeader = new JLabel(" ");
@@ -140,7 +171,20 @@ public class AdminView extends JFrame {
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             button.setFocusPainted(false);
 
-            button.addActionListener(e -> switchCard(item));
+            button.addActionListener(e -> {
+                if (item.equals("LOGOUT")) {
+                    SessionManager.getInstance().clearSession();
+                    dispose();
+                    
+                    // Asumsi LoginView dan Controller ada
+                    SwingUtilities.invokeLater(() -> {
+                        LoginView loginView = new LoginView();
+                        new controller.LoginController(loginView); 
+                    });
+                } else {
+                    switchCard(item);
+                }
+            });
 
             menuButtons.put(item, button);
             panel.add(button);
@@ -202,12 +246,12 @@ public class AdminView extends JFrame {
 
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
 
-        JTable table = new JTable(model);
-
         model.addRow(new Object[]{"1", "672024082", "CHRISTIAN WAHYU SURYA ANGKASA", "Rp 0", "Kirim"});
         model.addRow(new Object[]{"2", "672024089", "ALEXANDER AXL DYANDRA SOEMARDHI PUTRA", "Rp 0", "Kirim"});
         model.addRow(new Object[]{"3", "672024092", "AHMAD HAFIZH", "Rp 0", "Kirim"});
         model.addRow(new Object[]{"4", "672024097", "ELGAN SEVI PRAMUDITA", "Rp 0", "Kirim"});
+
+        JTable table = new JTable(model);
 
         table.setRowHeight(32);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -319,11 +363,24 @@ public class AdminView extends JFrame {
                 return;
             }
 
-            JOptionPane.showMessageDialog(panel,
+            // --- LOGIC DATABASE BARU (GLOBAL NOTIFIKASI) ---
+            NotifikasiService notifService = new NotifikasiService();
+            
+            String judul = ""; 
+            String pengirimRole = "Super Admin";
+            String targetRole = "ALL"; 
+            String targetKelas = null; 
+            
+            if (notifService.addNotification(judul, isi, pengirimRole, targetRole, targetKelas)) {
+                JOptionPane.showMessageDialog(panel,
                     "Notifikasi berhasil dikirim ke seluruh pengguna:\n\n" + isi,
                     "Notifikasi Terkirim", JOptionPane.INFORMATION_MESSAGE);
-
-            textArea.setText("");
+                textArea.setText("");
+            } else {
+                 JOptionPane.showMessageDialog(panel,
+                    "Gagal menyimpan notifikasi ke database.",
+                    "Error Database", JOptionPane.ERROR_MESSAGE);
+            }
         });
 
         bottomPanel.add(btnLanjut);
@@ -332,7 +389,170 @@ public class AdminView extends JFrame {
         return panel;
     }
 
-    // =========================== ATUR KALENDER ======================
+    // =========================== KALENDER HELPER METHODS (FIXED) ======================
+    
+    // Helper: Menampilkan detail agenda
+    private void showAgendaDetail(int day, List<KalenderModel> todayEvents) {
+        if (todayEvents.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Tidak ada agenda untuk tanggal " + day, "Detail Agenda", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        StringBuilder message = new StringBuilder("<html><b>Agenda Tanggal " + day + "</b><br>");
+        
+        for (KalenderModel event : todayEvents) {
+            message.append("<hr style='border-top: 1px solid #ccc;'>")
+                   .append("<b>Acara:</b> ").append(event.getNamaEvent()).append("<br>")
+                   .append("<b>Deskripsi:</b> ").append(event.getDeskripsi()).append("<br>")
+                   .append("<b>Pengirim:</b> ").append(event.getPengirimRole()).append("<br>")
+                   .append("<b>Target:</b> ").append(event.getTargetRole()).append("<br>");
+        }
+        message.append("</html>");
+        
+        JOptionPane.showMessageDialog(this, message.toString(), "Detail Agenda", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    // Helper: Membuat grid kalender dengan highlight agenda
+    private JPanel createCalendarGridForAdmin() {
+        JPanel grid = new JPanel(new GridLayout(6, 7, 5, 5));
+        grid.setBackground(Color.WHITE);
+        
+        KalenderService kalenderService = new KalenderService();
+        // Admin melihat event yang ditargetkan ke "Super Admin" atau "ALL"
+        List<KalenderModel> eventList = kalenderService.getEvents("Super Admin"); 
+        Map<Integer, List<KalenderModel>> eventsByDay = new HashMap<>();
+        for (KalenderModel event : eventList) {
+            int day = event.getDayOfMonth();
+            eventsByDay.computeIfAbsent(day, k -> new ArrayList<>()).add(event);
+        }
+
+        String[] days = {"MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"};
+        for (String d : days) {
+            JLabel dayLbl = new JLabel(d, SwingConstants.CENTER);
+            dayLbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            grid.add(dayLbl);
+        }
+
+        // Looping untuk 35 sel (6 baris x 7 kolom)
+        for (int i = 1; i <= 35; i++) {
+            if (i >= 5 && i <= 34) { // Asumsi November 1 (i=5) - November 30 (i=34)
+                
+                final int dayOfMonth = i - 4; // Menghitung hari bulan yang sebenarnya (1-30)
+                JButton dayBtn = new JButton(String.valueOf(dayOfMonth));
+                dayBtn.setFocusPainted(false);
+                dayBtn.setBorder(BorderFactory.createEmptyBorder());
+                
+                final List<KalenderModel> todayEvents = eventsByDay.getOrDefault(dayOfMonth, new ArrayList<>());
+
+                // Highlighting days with events
+                if (!todayEvents.isEmpty()) {
+                    dayBtn.setBackground(AGENDA_COLOR); 
+                    dayBtn.setForeground(SIDEBAR_COLOR);
+                    dayBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                } else {
+                    dayBtn.setBackground(new Color(230, 235, 240));
+                }
+
+                // Add listener for detail popup
+                dayBtn.addActionListener(e -> {
+                     showAgendaDetail(dayOfMonth, todayEvents);
+                });
+
+                grid.add(dayBtn);
+            } else {
+                grid.add(new JLabel("")); // Sel kosong
+            }
+        }
+        
+        return grid;
+    }
+    
+    // Helper: Memanggil input dialog untuk menambah agenda
+    private void showAgendaInputDialog() {
+        JDialog dialog = new JDialog(this, "Tambah Agenda Baru", true); 
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.getContentPane().setBackground(Color.WHITE);
+        
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 0, 15));
+        
+        JTextField titleField = new JTextField(20);
+        inputPanel.add(new JLabel("Nama Acara:"));
+        inputPanel.add(titleField);
+        
+        JTextField dateField = new JTextField("YYYY-MM-DD");
+        inputPanel.add(new JLabel("Tanggal (YYYY-MM-DD):"));
+        inputPanel.add(dateField);
+        
+        JTextArea descArea = new JTextArea(3, 20);
+        descArea.setLineWrap(true);
+        JScrollPane descScrollPane = new JScrollPane(descArea);
+        
+        JPanel descPanel = new JPanel(new BorderLayout());
+        descPanel.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
+        descPanel.add(new JLabel("Deskripsi:"), BorderLayout.NORTH);
+        descPanel.add(descScrollPane, BorderLayout.CENTER);
+        
+        JButton confirmButton = new JButton("Konfirmasi");
+        confirmButton.setBackground(SIDEBAR_COLOR);
+        confirmButton.setForeground(Color.WHITE);
+
+        confirmButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String title = titleField.getText().trim();
+                String dateString = dateField.getText().trim();
+                String description = descArea.getText().trim();
+                
+                if (title.isEmpty() || dateString.isEmpty() || description.isEmpty()) {
+                     JOptionPane.showMessageDialog(dialog, "Harap lengkapi semua kolom.", "Input Kurang", JOptionPane.WARNING_MESSAGE);
+                     return;
+                }
+                
+                if (!dateString.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                     JOptionPane.showMessageDialog(dialog, "Format tanggal harus YYYY-MM-DD.", "Kesalahan Input", JOptionPane.ERROR_MESSAGE);
+                     return;
+                }
+                
+                KalenderService kalenderService = new KalenderService();
+                // ADMIN MENAMBAHKAN AGENDA UNTUK SELURUH USER ('ALL')
+                KalenderModel newEvent = new KalenderModel(title, dateString, description, "Super Admin", "ALL");
+                
+                if (kalenderService.addEvent(newEvent)) {
+                    JOptionPane.showMessageDialog(dialog, "Agenda Global berhasil ditambahkan.", "Agenda Tersimpan", JOptionPane.INFORMATION_MESSAGE);
+                    dialog.dispose();
+                    refreshAturKalenderPanel(); 
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Gagal menyimpan agenda ke database.", "Error Database", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        buttonPanel.add(confirmButton);
+
+        dialog.add(inputPanel, BorderLayout.NORTH);
+        dialog.add(descPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.pack();
+        dialog.setLocationRelativeTo(AdminView.this);
+        dialog.setVisible(true);
+    }
+    
+    // Helper: Merefresh panel kalender setelah penambahan
+    private void refreshAturKalenderPanel() {
+        // Ganti panel 'ATUR KALENDER' lama dengan yang baru
+        // Asumsi ATUR KALENDER berada di Index 4
+        dynamicContentPanel.remove(dynamicContentPanel.getComponent(4)); 
+        dynamicContentPanel.add(createAturKalenderPanel(), "ATUR KALENDER", 4);
+        cardLayout.show(dynamicContentPanel, "ATUR KALENDER");
+        dynamicContentPanel.revalidate();
+        dynamicContentPanel.repaint();
+    }
+
+
     private JPanel createAturKalenderPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
@@ -351,41 +571,17 @@ public class AdminView extends JFrame {
 
         JLabel monthLabel = new JLabel("NOVEMBER", SwingConstants.CENTER);
         monthLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        monthLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
+        monthLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         calendarCard.add(monthLabel, BorderLayout.NORTH);
 
-        JPanel grid = new JPanel(new GridLayout(6, 7, 5, 5));
-        grid.setBackground(Color.WHITE);
-
-        String[] days = {"MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"};
-        for (String d : days) {
-            JLabel dayLbl = new JLabel(d, SwingConstants.CENTER);
-            dayLbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            grid.add(dayLbl);
-        }
-
-        for (int i = 1; i <= 35; i++) {
-            if (i <= 30) {
-                JButton dayBtn = new JButton(String.valueOf(i));
-                dayBtn.setFocusPainted(false);
-                dayBtn.setBackground(new Color(230, 235, 240));
-                dayBtn.setBorder(BorderFactory.createEmptyBorder());
-                grid.add(dayBtn);
-            } else {
-                grid.add(new JLabel(""));
-            }
-        }
-
+        JPanel grid = createCalendarGridForAdmin(); // Menggunakan fungsi grid yang diperbaiki
         calendarCard.add(grid, BorderLayout.CENTER);
 
-        JLabel agendaLabel = new JLabel("Belum ada agenda.", SwingConstants.LEFT);
+        JLabel agendaLabel = new JLabel("Status: Kalender dikelola oleh KalenderService", SwingConstants.LEFT);
         agendaLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        agendaLabel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        agendaLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         calendarCard.add(agendaLabel, BorderLayout.SOUTH);
-
         panel.add(calendarCard, BorderLayout.CENTER);
-
-        List<String> agendaList = new ArrayList<>();
 
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         bottomPanel.setBackground(Color.WHITE);
@@ -396,29 +592,7 @@ public class AdminView extends JFrame {
         btnTambahAgenda.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
         btnTambahAgenda.addActionListener(e -> {
-            String tanggal = JOptionPane.showInputDialog(panel,
-                    "Masukkan tanggal (1-30):", "Tambah Agenda",
-                    JOptionPane.QUESTION_MESSAGE);
-            if (tanggal == null || tanggal.trim().isEmpty()) return;
-
-            String namaAgenda = JOptionPane.showInputDialog(panel,
-                    "Masukkan nama agenda:", "Tambah Agenda",
-                    JOptionPane.QUESTION_MESSAGE);
-            if (namaAgenda == null || namaAgenda.trim().isEmpty()) return;
-
-            String agenda = tanggal + " November : " + namaAgenda;
-            agendaList.add(agenda);
-
-            StringBuilder sb = new StringBuilder("<html>");
-            for (String a : agendaList) {
-                sb.append(a).append("<br>");
-            }
-            sb.append("</html>");
-            agendaLabel.setText(sb.toString());
-
-            JOptionPane.showMessageDialog(panel,
-                    "Agenda berhasil ditambahkan:\n" + agenda,
-                    "Agenda Ditambahkan", JOptionPane.INFORMATION_MESSAGE);
+            showAgendaInputDialog();
         });
 
         bottomPanel.add(btnTambahAgenda);

@@ -2,10 +2,19 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import model.KalenderModel; // HARUS ADA
+import model.SessionManager; // HARUS ADA
+import service.KalenderService; // HARUS ADA
 
 public class KalenderView extends JPanel {
 
     private final Color SIDEBAR_COLOR = new Color(0, 35, 120); 
+    private final Color AGENDA_COLOR = new Color(204, 229, 255); // Warna untuk agenda dari DB
 
     public KalenderView() {
         setLayout(new BorderLayout());
@@ -14,6 +23,23 @@ public class KalenderView extends JPanel {
     }
     
     private void initComponents() {
+        
+        // 1. Ambil data event dari service
+        String userRole = SessionManager.getInstance().isLoggedIn() ? 
+                            SessionManager.getInstance().getCurrentUser().getRole() : "Mahasiswa";
+        
+        KalenderService kalenderService = new KalenderService();
+        List<KalenderModel> eventList = kalenderService.getEvents(userRole);
+
+        // Map event berdasarkan hari bulan
+        Map<Integer, List<KalenderModel>> eventsByDay = new HashMap<>();
+        for (KalenderModel event : eventList) {
+            int day = event.getDayOfMonth();
+            if (day > 0) {
+                eventsByDay.computeIfAbsent(day, k -> new ArrayList<>()).add(event);
+            }
+        }
+        
         
         // --- PANEL KONTEN UTAMA ---
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -29,7 +55,19 @@ public class KalenderView extends JPanel {
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
         // --- 2. GRID KALENDER ---
-        JPanel gridPanel = new JPanel(new GridLayout(6, 7, 5, 5)); // 6 baris x 7 kolom
+        JPanel gridPanel = createCalendarGrid(eventsByDay); 
+        mainPanel.add(gridPanel, BorderLayout.CENTER);
+        
+        // --- 3. FOOTER (Catatan Acara) ---
+        JPanel footerPanel = createFooterPanel(eventList);
+        mainPanel.add(footerPanel, BorderLayout.SOUTH);
+
+
+        this.add(mainPanel, BorderLayout.CENTER);
+    }
+    
+    private JPanel createCalendarGrid(Map<Integer, List<KalenderModel>> eventsByDay) {
+        JPanel gridPanel = new JPanel(new GridLayout(6, 7, 5, 5));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         
         // Header Hari
@@ -52,42 +90,98 @@ public class KalenderView extends JPanel {
         
         // Hari ke-1 (Jumat)
         for (int i = 0; i < maxDay; i++) {
-            JButton dateButton = new JButton(String.valueOf(currentDay));
+            final int dayOfMonth = currentDay;
+            final List<KalenderModel> todayEvents = eventsByDay.getOrDefault(dayOfMonth, new ArrayList<>());
+            
+            JButton dateButton = new JButton(String.valueOf(dayOfMonth));
             dateButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
             dateButton.setFocusPainted(false);
             
-            // Default styling
-            dateButton.setForeground(Color.BLACK);
-            dateButton.setBackground(new Color(245, 245, 245));
+            Color defaultBg = new Color(245, 245, 245);
+            Color agendaColor = defaultBg;
+            Color agendaTextColor = Color.BLACK;
 
-            // FIX: Highlight Tanggal 10 sesuai desain (Merah/Pink)
-            if (currentDay == 10) {
-                 dateButton.setBackground(new Color(255, 102, 102)); 
-                 dateButton.setForeground(Color.WHITE); 
+            // Logika Coloring: Cek apakah ada event dari DB
+            if (!todayEvents.isEmpty()) {
+                agendaColor = AGENDA_COLOR; 
+                agendaTextColor = SIDEBAR_COLOR;
             }
-            // FIX: Highlight Tanggal 30 (Hanya untuk konsistensi visual)
-             if (currentDay == 30) {
-                 dateButton.setBackground(new Color(220, 220, 220)); 
-                 dateButton.setForeground(SIDEBAR_COLOR); 
+            
+            // Logic Coloring Bawaan (Contoh Hari Pahlawan)
+            if (dayOfMonth == 10) {
+                 agendaColor = new Color(255, 102, 102); 
+                 agendaTextColor = Color.WHITE; 
+            } else if (dayOfMonth == 30) {
+                 agendaColor = new Color(220, 220, 220); 
+                 agendaTextColor = SIDEBAR_COLOR; 
             }
+            
+            dateButton.setBackground(agendaColor);
+            dateButton.setForeground(agendaTextColor);
+            
+            // Tambahkan Listener untuk Detail Agenda
+            dateButton.addActionListener(e -> showAgendaDetail(dayOfMonth, todayEvents));
             
             gridPanel.add(dateButton);
             currentDay++;
         }
+        return gridPanel;
+    }
+    
+    private void showAgendaDetail(int day, List<KalenderModel> todayEvents) {
+        if (todayEvents.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Tidak ada agenda untuk tanggal " + day, "Detail Agenda", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        StringBuilder message = new StringBuilder("<html><b>Agenda Tanggal " + day + "</b><br>");
         
-        mainPanel.add(gridPanel, BorderLayout.CENTER);
+        for (KalenderModel event : todayEvents) {
+            message.append("<hr style='border-top: 1px solid #ccc;'>")
+                   .append("<b>Acara:</b> ").append(event.getNamaEvent()).append("<br>")
+                   .append("<b>Deskripsi:</b> ").append(event.getDeskripsi()).append("<br>")
+                   .append("<b>Pengirim:</b> ").append(event.getPengirimRole()).append("<br>")
+                   .append("<b>Target:</b> ").append(event.getTargetRole()).append("<br>");
+        }
+        message.append("</html>");
         
-        // --- 3. FOOTER (Catatan Acara) ---
+        JOptionPane.showMessageDialog(this, message.toString(), "Detail Agenda", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private JPanel createFooterPanel(List<KalenderModel> eventList) {
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         footerPanel.setBackground(Color.WHITE);
-        JLabel noteLabel = new JLabel("10 November | Hari Pahlawan");
+        
+        String noteText;
+
+        // Cek apakah ada event dari DB untuk ditampilkan
+        if (!eventList.isEmpty()) {
+            StringBuilder sb = new StringBuilder("<html>");
+            
+            // Tambahkan event hari Pahlawan sebagai default event non-DB
+            sb.append("10 November | Hari Pahlawan<br>");
+
+            // List 3 event teratas dari DB
+            int limit = 3;
+            for (int i = 0; i < Math.min(limit, eventList.size()); i++) {
+                KalenderModel event = eventList.get(i);
+                sb.append("<b>").append(event.getNamaEvent()).append(" (")
+                  .append(event.getTanggal()).append(")</b> - Oleh: ")
+                  .append(event.getPengirimRole()).append("<br>");
+            }
+            sb.append("</html>");
+            noteText = sb.toString();
+        } else {
+             // Jika tidak ada event dari DB, tampilkan default Hari Pahlawan
+             noteText = "10 November | Hari Pahlawan";
+        }
+        
+        JLabel noteLabel = new JLabel(noteText);
         noteLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         noteLabel.setForeground(Color.GRAY);
         noteLabel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 10));
         footerPanel.add(noteLabel);
-        mainPanel.add(footerPanel, BorderLayout.SOUTH);
-
-
-        this.add(mainPanel, BorderLayout.CENTER);
+        
+        return footerPanel;
     }
 }

@@ -2,23 +2,30 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter; 
+import java.awt.event.MouseEvent;   
 import java.awt.geom.RoundRectangle2D;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;                 
+import model.SessionManager;         
+import model.PenggunaModel;          
+import model.NotifikasiModel;        
+import service.NotifikasiService;    
 
 public class HomeView extends JFrame {
 
-    private JPanel mainContainerPanel; 
-    private JPanel dynamicContentPanel; 
+    private JPanel mainContainerPanel;
+    private JPanel dynamicContentPanel;
     private CardLayout cardLayout;
 
     private Map<String, JButton> menuButtons;
     
-    private final Color SIDEBAR_COLOR = new Color(0, 35, 120); 
-    private final Color SIDEBAR_BG_COLOR = new Color(230, 235, 240); 
+    private final Color SIDEBAR_COLOR = new Color(0, 35, 120);
+    private final Color SIDEBAR_BG_COLOR = new Color(230, 235, 240);
     private final Color MAIN_BG_COLOR = new Color(248, 249, 250);
 
-    private final String USER_NIM_NAME = "672024097 - ELGAN SEVI PRAMUDITA (FAKULTAS TEKNOLOGI INFORMASI - TEKNIK INFORMATIKA)";
+    private String USER_NIM_NAME;
     private final String SEMESTER_SKS = "SEMESTER 1 | TA 2025 - 2026 | BEBAN SKS MAKSIMAL : 18 sks";
 
 
@@ -28,6 +35,15 @@ public class HomeView extends JFrame {
         setResizable(true);
         getContentPane().setBackground(new Color(245, 246, 247));
 
+        // --- AMBIL DATA DARI SESI UNTUK HEADER ---
+        PenggunaModel user = SessionManager.getInstance().getCurrentUser();
+        if (user != null) {
+            this.USER_NIM_NAME = user.getId() + " - " + user.getNamaLengkap() + " (FAKULTAS TEKNOLOGI INFORMASI - TEKNIK INFORMATIKA)";
+        } else {
+            this.USER_NIM_NAME = "Loading User Data...";
+        }
+        // ------------------------------------------------
+
         initComponents();
 
         setSize(1300, 650);
@@ -35,7 +51,6 @@ public class HomeView extends JFrame {
         setVisible(true);
     }
     
-    // Dipanggil dari HomeController untuk memuat konten setelah Frame siap
     public void initializeContent() {
         cardLayout = (CardLayout) dynamicContentPanel.getLayout();
         addInitialContent(); 
@@ -43,11 +58,9 @@ public class HomeView extends JFrame {
 
     private void initComponents() {
         
-        // FIX Centering
         JPanel fullFramePanel = new JPanel(new GridBagLayout()); 
         fullFramePanel.setBackground(new Color(245, 246, 247)); 
         
-        // =================== MAIN ROUNDED CONTAINER ===================
         int mainPanelRadius = 40;
         
         mainContainerPanel = new JPanel() {
@@ -68,17 +81,17 @@ public class HomeView extends JFrame {
         fullFramePanel.add(mainContainerPanel);
         getContentPane().add(fullFramePanel, BorderLayout.CENTER); 
         
-        // =================== HEADER INFO BAR (TOP) ===================
+        // HEADER
         JPanel headerPanel = createHeaderPanel();
         headerPanel.setBounds(0, 0, 1000, 60);
         mainContainerPanel.add(headerPanel);
         
-        // =================== SIDEBAR MENU (LEFT - 250px) ===================
+        // SIDEBAR
         JPanel sidebarWrapper = createSidebar();
         sidebarWrapper.setBounds(0, 60, 250, 470); 
         mainContainerPanel.add(sidebarWrapper);
 
-        // =================== DYNAMIC CONTENT AREA (RIGHT) ===================
+        // CONTENT AREA
         dynamicContentPanel = new JPanel(new CardLayout()); 
         dynamicContentPanel.setBounds(260, 60, 720, 470); 
         dynamicContentPanel.setBackground(Color.WHITE);
@@ -101,11 +114,34 @@ public class HomeView extends JFrame {
         infoLabel2.setBounds(20, 30, 800, 15);
         panel.add(infoLabel2);
         
-        JLabel notifIcon = new JLabel("🔔"); 
+        // --- 🔔 NOTIFIKASI ICON DINAMIS ---
+        PenggunaModel user = SessionManager.getInstance().getCurrentUser();
+        NotifikasiService notifService = new NotifikasiService();
+        String userRole = user != null ? user.getRole() : "Mahasiswa"; 
+        
+        String userClass = "TCS103A"; // Asumsi Kelas Mahasiswa
+        
+        List<NotifikasiModel> notifications = notifService.getNotifications(userRole, userClass);
+        int unreadCount = notifications.size();
+        
+        JLabel notifIcon = new JLabel("<html><span style='color:white;'>" + 
+                                       (unreadCount > 0 ? "🔔 (" + unreadCount + ")" : "🔔") + 
+                                       "</span></html>"); 
+        
         notifIcon.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        notifIcon.setForeground(Color.WHITE);
-        notifIcon.setBounds(950, 15, 30, 30);
+        notifIcon.setBounds(920, 15, 80, 30); 
+        notifIcon.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
         panel.add(notifIcon);
+        
+        // MouseListener untuk memunculkan NotifikasiDetailView
+        notifIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent evt) {
+                NotifikasiDetailView detailView = new NotifikasiDetailView(HomeView.this, notifications);
+                detailView.showDialog();
+            }
+        });
+        // --- END NOTIFIKASI ICON DINAMIS ---
         
         return panel;
     }
@@ -133,7 +169,6 @@ public class HomeView extends JFrame {
             button.setBackground(SIDEBAR_BG_COLOR);
             button.setForeground(SIDEBAR_COLOR);
             
-            // Font disesuaikan agar teks panjang muat
             button.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
             
             button.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 5)); 
@@ -148,21 +183,16 @@ public class HomeView extends JFrame {
         return panel;
     }
     
-    // ==========================================================
-    // METODE PEMUATAN KONTEN UTAMA (MODULAR)
-    // ==========================================================
     private void addInitialContent() {
+        // PERHATIAN: Asumsi JadwalView, KSTView, NilaiView, TagihanView, KalenderView sudah ada di package view
         JPanel homeContent = createHomeWithRegistrationFormPanel();
         dynamicContentPanel.add(homeContent, "HOME");
         
-        // --- 2. REGISTRASI ULANG (Panel Error Statis) ---
         JPanel registrasiUlangContent = createRegistrasiUlangErrorPanel();
         dynamicContentPanel.add(registrasiUlangContent, "REGISTRASI ULANG");
         
-        // --- 3. JADWAL KULIAH (Memuat Modul JadwalView) ---
+        // Anda perlu memastikan class-class ini tersedia
         dynamicContentPanel.add(new JadwalView(), "JADWAL KULIAH"); 
-        
-        // --- Memuat View Modul Lainnya (Harus extends JPanel) ---
         dynamicContentPanel.add(new KSTView(), "REGISTRASI MATAKULIAH"); 
         dynamicContentPanel.add(new NilaiView(), "TRANSKRIP NILAI"); 
         dynamicContentPanel.add(new TagihanView(), "TAGIHAN");
@@ -170,8 +200,6 @@ public class HomeView extends JFrame {
         
         cardLayout.show(dynamicContentPanel, "HOME"); 
     }
-    
-    // ... Metode-metode helper
     
     private JPanel createRegistrasiUlangErrorPanel() {
         JPanel panel = new JPanel(new GridBagLayout()); 
@@ -189,7 +217,6 @@ public class HomeView extends JFrame {
         JPanel panel = new JPanel(null); 
         panel.setBackground(Color.WHITE);
         
-        // ================= HEADER WELCOME ==================
         JLabel welcomeTitle = new JLabel("SELAMAT DATANG");
         welcomeTitle.setFont(new Font("Segoe UI", Font.BOLD, 28)); 
         welcomeTitle.setForeground(SIDEBAR_COLOR);
@@ -201,7 +228,6 @@ public class HomeView extends JFrame {
         sysTitle.setBounds(50, 55, 600, 25); 
         panel.add(sysTitle);
         
-        // ================= DESKRIPSI ==================
         JTextArea deskripsi = new JTextArea("UNTUK KEPERLUAN ADMINISTRASI ANDA, SILAHKAN UPDATE ISIAN DI BAWAH INI. DATA INI DIPERGUNAKAN UNTUK SYARAT PELAPORAN KE DIREKTORAT JENDERAL PENDIDIKAN TINGGI (DIKTI), KARENA PENTINGNYA DATA KEPENDUDUKAN MAHASISWA DALAM PELAPORAN PD DIKTI DAN VERIFIKASI KEABSAHAN IJAZAH, MAKA WAJIB MELAKUKAN PENGISIAN NIK DAN NOMOR KK SECARA BENAR");
         deskripsi.setWrapStyleWord(true);
         deskripsi.setLineWrap(true);
@@ -211,7 +237,6 @@ public class HomeView extends JFrame {
         deskripsi.setBorder(null);
         panel.add(deskripsi);
         
-        // Form Fields
         String[] fields = {"Tempat, Tanggal Lahir", "No. Kartu Keluarga", "NIK (Nomor Induk Kependudukan)", 
                            "No. Handphone", "Email", "Nomor Rekening", "Bank", 
                            "Atas Nama Rekening"}; 
@@ -232,7 +257,6 @@ public class HomeView extends JFrame {
             yPos += 30; 
         }
         
-        // Tombol Lanjut
         JButton lanjutButton = new JButton("Lanjut");
         lanjutButton.setBackground(SIDEBAR_COLOR);
         lanjutButton.setForeground(Color.WHITE);
@@ -243,7 +267,6 @@ public class HomeView extends JFrame {
         return panel;
     }
     
-    // Metode untuk ganti kartu (dipanggil oleh Controller)
     public void switchCard(String cardName) {
         cardLayout.show(dynamicContentPanel, cardName);
         highlightButton(cardName);
